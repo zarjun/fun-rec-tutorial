@@ -40,7 +40,7 @@ yum install git -y
 ```
 cd root
 git clone https://github.com/datawhalechina/fun-rec.git
-
+  
 ```
 
 ![](./pic/task1_clone_code_from_git.png)
@@ -86,7 +86,7 @@ chmod +x Anaconda3-2023.03-1-Linux-x86_64.sh
 
 # 执行脚本，等待时间较长
 ./Anaconda3-2023.03-1-Linux-x86_64.sh
-
+  
 ```
 
 - 看到这个页面，点击回车授权license。
@@ -116,7 +116,7 @@ export PATH=$PATH:/root/anaconda3/bin/
 
 # 启用环境
 source ~/.bashrc
-
+  
 ```
 
 - 如果部署成功我们会看到前边的机器稍有变化，进入到了`base`环境也就是`conda`的环境大本营。
@@ -162,7 +162,7 @@ source ~/.bashrc
 
 # 初始化 conda 环境
 conda init
-
+  
 ```
 
 7.这里提示我们进行重启，我们关闭当前终端重新打开（注意非重启开发机）到这里conda环境就彻底安装好啦！  
@@ -183,7 +183,7 @@ cd /root
 
 # 删除安装包
 rm -rf Anaconda3*
-
+    
 ```
 
 - 随后我们跳到最开始的【conda】部份重新走一遍安装流程，确保完成环境配置再往下进行。
@@ -205,7 +205,7 @@ conda config --set show_channel_urls yes
  
 #显示镜像通道
 conda config --show channels
-
+  
 ```
 
 - 看到这里就说明绝大部分环境工作已经完成啦！
@@ -224,7 +224,7 @@ conda create --name fun-rec python=3.8 -y
 conda activate fun-rec
 
 # 安装相关的依赖包
-
+  
 ```
 
 ![](./pic/task1_activate_fun-rec_eve.png)
@@ -250,7 +250,7 @@ wget http://tianchi-competition.oss-cn-hangzhou.aliyuncs.com/531842/articles.csv
 wget http://tianchi-competition.oss-cn-hangzhou.aliyuncs.com/531842/articles_emb.csv
 wget http://tianchi-competition.oss-cn-hangzhou.aliyuncs.com/531842/testA_click_log.csv
 wget http://tianchi-competition.oss-cn-hangzhou.aliyuncs.com/531842/train_click_log.csv
-
+  
 ```
 
 <img src="./pic/task1_wget_data_from_http.png" style="zoom:50%;" />
