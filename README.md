@@ -1,5 +1,5 @@
 # fun-rec-tutorial
-[fun-rec](https://github.com/datawhalechina/fun-rec) 食用手册
+[fun-rec](https://github.com/datawhalechina/fun-rec) 代码实操指导手册
 
 
 # 更新日志
