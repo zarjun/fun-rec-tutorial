@@ -49,30 +49,17 @@ git clone https://github.com/datawhalechina/fun-rec.git
 
 ### 本地
 
-- 通过Vscode远程连接服务器（方便可视化Jupyter Notebook）
-- 左侧插件搜索【Jupyter】Install in SSH：xxx.xxx.xxx.xxx
-
-![](./pic/task1_ssh_jupyter.png)
-
-- 安装过后可以看到右侧的Notebook上方多了些可供运行的按钮，这给运行和调试Notebook代码提供了巨大便利。
-- 按照左侧路径打开第一个Jupter Notebook。
-
-![](./pic/task1_where_notebook.png)
-
-- 点击Run All，安装相关插件。
-
-![](./pic/task1_run_all_first_time.png)
-
-- 如果这里显示安装失败，建议可以先把【实例】进行重启。
-
-![](./pic/task1_jupyter_install_python.png)
-
 
 
 #### conda
 
-- 可以看到右边这里已经是有Python的标识了，但我们最好不是现在就去运行我们的程序，因为我们还没有导入本次代码用到的相关库，这也非常简单只需以下几步。Python环境千千万，为此我们需要用到conda来管理我们的Python环境。
+- 通过前边的操作我们已经拿到了工程项目的代码，但我们最好不是现在就去运行我们的程序，因为我们还没有导入本次代码用到的相关库，这也非常简单只需以下几步。
+- Python环境千千万，为此我们需要用到conda来管理我们的Python环境。
+
+![](./pic/task1_where_notebook.png)
+
 - 请注意你只需要在最初的时候进行如下安装，重启阿里云服务器并不会清空我们的安装（前提是都放在了`/root`路径下）。
+- 在上方菜单栏选择【Terminal - New Terminal】调出终端，输入运行以下命令（一次性复制粘贴过去）。
 
 ```Bash
 # 切换到根目录
@@ -229,10 +216,27 @@ conda activate fun-rec
 
 ![](./pic/task1_activate_fun-rec_eve.png)
 
-- 到这里我们已经把相关的依赖包都安装完成了，接着点击【Run All】就可以开始畅快玩耍啦!!!
 - 到这里运行所需的环境就全都配置好了。但需要注意的是每当我们重新打开终端时，都会进入conda大本营也就是`base`环境，故我们在运行相关代码或者命令行输入指令前，都想要进入我们定义好的`fun-rec`才能生效。
 
 ![](./pic/task1_need_activate_eve.png)
+
+
+
+- 但我们在运行的时候需要指定对应的运行环境，conda帮助我们隔离每个环境以方便快速切换，这里我们需要选择刚刚创建的`fun-rec`虚拟环境。
+
+![](./pic/task1_jupyter_select_kernel.png)
+
+- 发现我们在选择运行环境时找不到`fun-rec`，此时我们还需要一些步骤来确保我们的代码正确运行，在左边侧边栏处下载以下两个插件：Python和Jupyter。
+
+![](./pic/task1_install_python_extension.png)
+
+![](./pic/task1_install_jupyter_extension.png)
+
+- 点击右上方的`Select kernel`就能看到我们刚刚配置的`conda`环境了，选择`fun-rec`点击【Run All】就可以快乐玩耍啦!!!
+
+![](./pic/task1_all_eve_config_complete.png)
+
+
 
 ### Web
 
