@@ -9,15 +9,17 @@
 
 # 更新日志
 
-
-- 2025年1月10日  
-环境配置（阿里ECS）+ Git仓库 + Data download操作说明
+- 2025年1月14日  
+  完善baseline运行和解读
 
 - 2025年1月11日  
   环境配置完整tutorial
 
-- 2025年1月14日  
-  完善baseline运行和解读
+- 2025年1月10日  
+  环境配置（阿里ECS）+ Git仓库 + Data download操作说明
+
+
+
 
 # Task1:Quick Start
 
@@ -25,6 +27,8 @@
 
 下载Vscode
 
+
+……
 
 
 创建服务器
@@ -279,7 +283,8 @@ wget http://tianchi-competition.oss-cn-hangzhou.aliyuncs.com/531842/train_click_
 
 - 首先我们可以通过新建一个cell来使用`pwd`指令查看当前所在的路径；如果你对于这些路径还不熟悉也没关系，在后续使用中多记录多观察即可。
 
-- ![](./pic/task1_pwd_command.png)创建文件目录用于保存中间结果
+![](./pic/task1_pwd_command.png)
+- 创建文件目录用于保存中间结果
 
 ```Bash
 # 创建该目录，若已存在则跳过
@@ -295,7 +300,7 @@ save_path = '/root/temp_results/'  # 临时变量保存路径
 
 - 关于工具函数`reduce_mem`的这段代码的作用是减少一个Pandas DataFrame的内存使用量。它通过将数据列转换为更小的数据类型来实现内存的节省。通过这种方式，可以有效地减少DataFrame的内存占用以避免数据溢出或截断，从而提高数据处理的效率和性能。
 
-```python
+```Python
 # 节约内存的一个标配函数
 def reduce_mem(df):
     starttime = time.time()
@@ -326,8 +331,8 @@ def reduce_mem(df):
                     df[col] = df[col].astype(np.float64)
     end_mem = df.memory_usage().sum() / 1024**2
     print('-- Mem. usage decreased to {:5.2f} Mb ({:.1f}% reduction),time spend:{:2.2f} min'.format(end_mem,
-                                                                                                           100*(start_mem-end_mem)/start_mem,
-                                                                                                           (time.time()-starttime)/60))
+                                                                                                   100*(start_mem-end_mem)/start_mem,
+                                                                                                   (time.time()-starttime)/60))
     return df
 ```
 
@@ -372,7 +377,7 @@ def get_all_click_df(data_path=data_path, offline=True):
 ```
 
 - 此处还考虑了一些异常样本，例如对`user_id`, `click_article_id`, `click_timestamp`有重复的样本，在本次赛事提供的数据中暂无此类数据；
-- **只考虑****`user_id`****和****`click_article_id`****这两个列的情况下**，通过以下代码查看这些异常样本：
+- 只考虑`user_id`和`click_article_id`这两个列的情况，可以通过以下代码查看这两列异常样本，代码如下：
 
 ```Python
 trn_click = pd.read_csv(data_path + 'train_click_log.csv')
@@ -452,11 +457,11 @@ print(duplicate_rows)
 
   - 数据的前两条长这样，可以看出来已经归一化到∈[-1,1]之间的值，具体怎么读取和处理这种向量值可以参考`Task4.多路召回版块`；
 
-| article_id | emb_0     | emb_1     | emb_2     | ……   | emb_247   | emb_248  | emb_249   |
-| ---------- | --------- | --------- | --------- | ---- | --------- | -------- | --------- |
-| 0          | -0.161183 | -0.957233 | -0.137944 | ……   | -0.231686 | 0.597416 | 0.409623  |
-| 1          | -0.523216 | -0.974058 | 0.738608  | ……   | 0.182828  | 0.39709  | -0.834364 |
-| ……         |           |           |           |      |           |          |           |
+    | article_id | emb_0     | emb_1     | emb_2     | ……   | emb_247   | emb_248  | emb_249   |
+    | ---------- | --------- | --------- | --------- | ---- | --------- | -------- | --------- |
+    | 0          | -0.161183 | -0.957233 | -0.137944 | ……   | -0.231686 | 0.597416 | 0.409623  |
+    | 1          | -0.523216 | -0.974058 | 0.738608  | ……   | 0.182828  | 0.39709  | -0.834364 |
+    | ……         |           |           |           |      |           |          |           |
 
 
 
@@ -521,7 +526,7 @@ def get_item_user_time(click_df):
     return item_user_time_dict
 ```
 
-- 定义一个辅助函数`make_user_time_pair`，将输入的 `df` 中的用户ID和点击时间列，打包成一个二元组列表。
+- 定义一个辅助函数`make_user_time_pair`，将输入的 `df` 中的用户ID和点击时间列，打包成一个二元组列表。重点是搞清楚输入是什么，输出是什么；该函数输入是一个名为`click_df`的Dataframe，输出是一个嵌套字典。外层字典的`key`值是`click_article_id`，内层字典是对应的`user_id`和`click_timestamp`也就是说这个`item`在哪个时间点被哪些人点击的信息，只不过换成了字典方式来存储（因为字典查询速度更快）。
   - **`groupby`** **分组**：根据文章ID (`click_article_id`) 进行分组。
   - **提取字段**：每组中提取 `user_id` 和 `click_timestamp` 列。
   - **生成用户-时间对**：对每组数据调用 `make_user_time_pair` 函数，生成对应的用户-时间对列表。
@@ -536,14 +541,14 @@ def get_item_user_time(click_df):
 
   - 使用 `zip` 将 `item_user_time_df` 的 `click_article_id` 和 `user_time_list` 列打包成键值对。
   - 转换为字典 `item_user_time_dict`，结构如：
-  - ```Python
+    ```Python
     {
         156624: [(196928, 1507035338092)],
         156560: [(196928, 1507035368092), (196144, 1507037486854)],
         161409: [(196144, 1507037516854)]
     }
     ```
-- 这里需要提到针对双层嵌套的字典大致常见的有两种表达方式，第一种跟《[itemCF编程实现](https://datawhalechina.github.io/fun-rec/#/ch02/ch2.1/ch2.1.1/itemcf)》思路一致即`item_user_time_dict={item1: [(user1, time1), (user2, time2)..],...}`；
+- 这里需要提到针对**双层嵌套**的字典大致常见的有两种表达方式，第一种跟《[itemCF编程实现](https://datawhalechina.github.io/fun-rec/#/ch02/ch2.1/ch2.1.1/itemcf)》思路一致即`item_user_time_dict={item1: [(user1, time1), (user2, time2)..],...}`；
   - 我们把横轴设为外层dict的`key=[item1, item2, item3, ……]`，纵轴设为内层中在该key下有多少的`key-value`对进行绘制，取1w条训练集数据得到如下图象；
   - 可以看到item被点击数的方差特别大，存在头部item的点击数特别大，但绝大部分item的点击数特别小，其中有62%的item点击数为1。
 - 第二种思路则是`get_user_item_time={user1: [(item1, time1), (item2, time2)..]...}`；
