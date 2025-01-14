@@ -16,6 +16,9 @@
 - 2025年1月11日  
   环境配置完整tutorial
 
+- 2025年1月14日  
+  完善baseline运行和解读
+
 # Task1:Quick Start
 
 ## 1.链接开发机
@@ -211,6 +214,15 @@ conda create --name fun-rec python=3.8 -y
 conda activate fun-rec
 
 # 安装相关的依赖包
+tqdm==4.67.1  
+numpy==1.22.3  
+pandas==1.4.1  
+faiss-cpu==1.8.0  
+scikit-learn==1.0.2  
+deepctr==0.9.3  
+tensorflow==2.2  
+protobuf==3.20.0  
+deepmatch==0.3.1
   
 ```
 
@@ -362,7 +374,7 @@ def get_all_click_df(data_path=data_path, offline=True):
 - 此处还考虑了一些异常样本，例如对`user_id`, `click_article_id`, `click_timestamp`有重复的样本，在本次赛事提供的数据中暂无此类数据；
 - **只考虑****`user_id`****和****`click_article_id`****这两个列的情况下**，通过以下代码查看这些异常样本：
 
-```Bash
+```Python
 trn_click = pd.read_csv(data_path + 'train_click_log.csv')
 tst_click = pd.read_csv(data_path + 'testA_click_log.csv')
 all_click = trn_click.append(tst_click)
@@ -437,7 +449,6 @@ print(duplicate_rows)
     |       words_count       |             文章字数             |      168      |
     |                         |                                  |               |
     | emb_1,emb_2,...,emb_249 |      文章embedding向量表示       |               |
-  - 
 
   - 数据的前两条长这样，可以看出来已经归一化到∈[-1,1]之间的值，具体怎么读取和处理这种向量值可以参考`Task4.多路召回版块`；
 
