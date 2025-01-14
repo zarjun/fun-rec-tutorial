@@ -474,6 +474,8 @@ print(duplicate_rows)
 > 1. 预先根据所有用户的历史行为数据，计算物品之间的相似性。
 > 2. 然后，把与用户喜欢的物品相类似的物品推荐给用户。
 
+### user_item_time_dict
+
 - 通过前边章节《[itemCF编程实现](https://datawhalechina.github.io/fun-rec/#/ch02/ch2.1/ch2.1.1/itemcf)》的学习，我们了解到基于物品的协同过滤算法（itemCF）就是预先根据用户的历史行为数据，去计算物品之间的相似性。
 
 > 举例来说，如果用户 1 喜欢物品 A ，而物品 A 和 C 非常相似，则可以将物品 C 推荐给用户1。ItemCF算法并不利用物品的内容属性计算物品之间的相似度， 主要通过分析用户的行为记录计算物品之间的相似度， 该算法认为， 物品 A 和物品 C 具有很大的相似度是因为喜欢物品 A 的用户极可能喜欢物品 C。
@@ -552,6 +554,7 @@ def get_item_user_time(click_df):
   - 我们把横轴设为外层dict的`key=[item1, item2, item3, ……]`，纵轴设为内层中在该key下有多少的`key-value`对进行绘制，取1w条训练集数据得到如下图象；
   - 可以看到item被点击数的方差特别大，存在头部item的点击数特别大，但绝大部分item的点击数特别小，其中有62%的item点击数为1。
 - 第二种思路则是`get_user_item_time={user1: [(item1, time1), (item2, time2)..]...}`；
+  
   - 同样绘制出来，可以看到不同user点击数相较没那么大，活跃user的点击数也小于50，其中99%的user其点击数都小于等于10次点击。
 
 ```Python
@@ -575,3 +578,365 @@ def get_user_item_time(click_df):
 ![](./pic/task1_user_item_time_dict.png)
 
 - 两种方式都能计算得到itemCF的相似矩阵，我们这里选择的是第二种方案也就是`user_item_time_dict`的方案；
+
+
+
+### itemcf_sim
+
+- 接下来看下`itemcf_sim`函数的主要作用，同样分析他的输入与输出，输入是`click_df`其类型为`Dataframe`；通过前边的分析我们很容易得到输入的这个`click_df`会首先输入函数`get_user_item_time`中得到一个`双层嵌套`字典；
+
+```Python
+# 获取用户点击文章的时间序列
+user_item_time_dict = get_user_item_time(df)
+```
+
+- 接着初始化一个空字典 `i2i_sim`，用于存储文章之间的相似度；
+- 使用 `collections` 模块中的 `defaultdict` 初始化一个默认值为整数的字典 `item_cnt`，用于记录每个文章被点击的次数。
+
+```Python
+#初始化相似度矩阵和计数器
+i2i_sim = {}
+item_cnt = defaultdict(int)
+```
+
+- 接着就是就是在一个`双层嵌套`字典中计算不同`item`的相似度，相似度具体怎么算；
+- 就是遍历**这个用户**点击的文章列表，对于每对不同的文章 `i` 和 `j`，计算它们之间的相似度。相似度的计算方法是将1除以点击文章列表长度的对数（加1是为了避免对数为0的情况），然后累加到 `i2i_sim[i][j]` 中。
+- 这里需要先理解`setdefault(key, value)`的用法，举个例子：
+  - 当键 `'key1'` 不存在于字典 `my_dict` 中时，调用 `my_dict.setdefault('key1', 'value1')` 会将 `'key1'` 和 `'value1'` 插入到字典中，并返回 `'value1'`。
+  - 当键 `'key1'` 已经存在于字典中时，再次调用 `my_dict.setdefault('key1', 'value2')` 不会改变字典中 `'key1'` 对应的值，仍然返回 `'value1'`。
+  - 当键 `'key2'` 不存在于字典中时，调用 `my_dict.setdefault('key2', 'value3')` 会将 `'key2'` 和 `'value3'` 插入到字典中，并返回 `'value3'`。
+
+```Python
+# 创建一个空字典
+my_dict = {}
+
+# 使用setdefault方法获取键'key1'的值，如果'key1'不存在，则设置默认值为'value1'
+value = my_dict.setdefault('key1', 'value1')
+
+# 输出字典和获取的值
+print(my_dict)  # 输出: {'key1': 'value1'}
+print(value)    # 输出: value1
+
+# 再次使用setdefault方法获取键'key1'的值，此时'key1'已存在，返回其对应的值
+value = my_dict.setdefault('key1', 'value2')
+
+# 输出字典和获取的值
+print(my_dict)  # 输出: {'key1': 'value1'}
+print(value)    # 输出: value1
+
+# 使用setdefault方法获取键'key2'的值，如果'key2'不存在，则设置默认值为'value3'
+value = my_dict.setdefault('key2', 'value3')
+
+# 输出字典和获取的值
+print(my_dict)  # 输出: {'key1': 'value1', 'key2': 'value3'}
+print(value)    # 输出: value3
+```
+
+- 有了上边的例子接着看下边代码，就清晰很多了：
+
+```Python
+# 先简单放一个user_item_time_dict
+
+{user1:[(item1, time1),(item2, time2)],
+ user2:[(item3, time3)],
+ ……
+ user3:[(item4, time4)]}
+ 
+{4163: [(289003, 1508171236976),
+  (283009, 1508171484271),
+  (30389, 1508171514271),
+  (156807, 1508179991575),
+  (352979, 1508180070348),
+  (73506, 1508180378138),
+  (119189, 1508180701156),
+  (237385, 1508181231773),
+  (342473, 1508181261773)],
+ 11211: [(209236, 1508102402099), (202559, 1508102432099)],
+ 11880: [(298599, 1508098381403),
+  (331116, 1508098435569),
+  (199372, 1508098571314),
+  (218028, 1508098601314)],
+...
+  (162655, 1507066855756),
+  (107216, 1507175169233),
+  (284312, 1507175199233),
+  (156625, 1507225274677),
+  (156963, 1507225304677)]}
+# 外层(第一层)嵌套，如果key中存在i则返回对应的value，否则返回全新一个空字典(内层)
+i2i_sim.setdefault(i, {})
+# 内层(第二层)嵌套，如果key中存在i则返回对应的value，否则返回数值0(对应value)
+i2i_sim[i].setdefault(j, 0)
+```
+
+- 这个时候再看回来整体，他的作用其实就是在一个`双层嵌套`字典中计算不同`item`的相似度，相似度的分子就是简单进行计数，分母不是简单除以`len(item_time_list)`而是取对数的处理；同时还通过`单层字典`记录物品出现次数。
+
+```Python
+# 计算物品相似度
+for user, item_time_list in tqdm(user_item_time_dict.items()):
+    # 在基于商品的协同过滤优化的时候可以考虑时间因素
+    for i, i_click_time in item_time_list:
+        item_cnt[i] += 1
+        i2i_sim.setdefault(i, {})
+        for j, j_click_time in item_time_list:
+            if(i == j):
+                continue
+            i2i_sim[i].setdefault(j, 0)
+            i2i_sim[i][j] += 1 / math.log(len(item_time_list) + 1)
+```
+
+- 到这里得到物品相似矩阵`i2i_sim`也就是
+
+```Python
+{item1:{item2:score},
+ item3:{item4:score,
+        item5:score,
+        item6:score},
+  ……
+ item7:{item8:score}}
+
+{4163: [(289003, 1508171236976),
+  (283009, 1508171484271),
+  (30389, 1508171514271),
+  (156807, 1508179991575),
+  (352979, 1508180070348),
+  (73506, 1508180378138),
+  (119189, 1508180701156),
+  (237385, 1508181231773),
+  (342473, 1508181261773)],
+ 11211: [(209236, 1508102402099), (202559, 1508102432099)],
+ 11880: [(298599, 1508098381403),
+  (331116, 1508098435569),
+  (199372, 1508098571314),
+  (218028, 1508098601314)],
+...
+  (162655, 1507066855756),
+  (107216, 1507175169233),
+  (284312, 1507175199233),
+  (156625, 1507225274677),
+  (156963, 1507225304677)]}
+```
+
+- 这里的`i2i_sim_`是用了第二种计算方式，也就是分母使用的是`item_i`与`item_j`出现次数的乘积
+
+```Python
+i2i_sim_[i][j] = wij / math.sqrt(item_cnt[i] * item_cnt[j])
+```
+
+- 得到不一样的`i2i_sim`相似矩阵
+
+```Python
+{289003: {283009: 0.43429448190325176,
+  30389: 0.43429448190325176,
+  156807: 0.43429448190325176,
+  352979: 0.43429448190325176,
+  73506: 0.43429448190325176,
+  119189: 0.43429448190325176,
+  237385: 0.43429448190325176,
+  342473: 0.43429448190325176},
+ 283009: {289003: 0.43429448190325176,
+  30389: 0.43429448190325176,
+  156807: 0.43429448190325176,
+  352979: 0.43429448190325176,
+  73506: 0.43429448190325176,
+  119189: 0.43429448190325176,
+  237385: 0.43429448190325176,
+  342473: 0.43429448190325176},
+ 30389: {289003: 0.43429448190325176,
+  283009: 0.43429448190325176,
+  156807: 0.43429448190325176,
+  352979: 0.43429448190325176,
+  73506: 0.43429448190325176,
+  119189: 0.43429448190325176,
+  237385: 0.43429448190325176,
+  342473: 0.43429448190325176},
+ 156807: {289003: 0.43429448190325176,
+...
+ 156963: {156622: 0.5138983423697507,
+  162655: 0.5138983423697507,
+  107216: 0.5138983423697507,
+  284312: 0.5138983423697507,
+  156625: 0.5138983423697507}}
+```
+
+
+
+### get_item_topk_click
+
+> 定义了一个名为 `get_item_topk_click` 的函数，其目的是从给定的数据表中获取点击次数最多的前 `k` 篇文章。
+
+- `click_df['click_article_id']`：从 `click_df` DataFrame 中选择 `click_article_id` 列，该列包含所有点击事件的文章ID。
+- `.value_counts()`：对 `click_article_id` 列中的值进行计数，返回一个 Series，其中索引是文章ID，值是每个文章ID出现的次数（即点击次数），并且自动按照点击次数降序排序。
+- `.index[:k]`：获取排序后的 Series 的前 `k` 个索引，即点击次数最多的前 `k` 篇文章的ID。
+
+```Python
+# 获取近期点击最多的文章
+def get_item_topk_click(click_df, k):
+    topk_click = click_df['click_article_id'].value_counts().index[:k]
+    return topk_click
+```
+
+
+
+### item_based_recommend
+
+- 接着我们可以针对每个`user`的历史点击记录，根据上述的相似矩阵`i2i_sim`、高热item列表`item_topk_click`和相关参数给出对应的`item`推荐列表。
+- 最终的推荐结果也是放在字典`user_recall_items_dict`里边，key是用户名，value是推荐结果；
+- 而确定推荐结果靠的是由函数`item_based_recommend`来完成的。
+
+```Python
+# 定义
+user_recall_items_dict = collections.defaultdict(dict)
+
+# 获取 用户 - 文章 - 点击时间的字典
+user_item_time_dict = get_user_item_time(all_click_df)
+
+# 去取文章相似度
+i2i_sim = pickle.load(open(save_path + 'itemcf_i2i_sim.pkl', 'rb'))
+
+# 相似文章的数量
+sim_item_topk = 10
+
+# 召回文章数量
+recall_item_num = 10
+
+# 用户热度补全
+item_topk_click = get_item_topk_click(all_click_df, k=50)
+
+for user in tqdm(all_click_df['user_id'].unique()):
+    user_recall_items_dict[user] = item_based_recommend(user, user_item_time_dict, i2i_sim, 
+                                                        sim_item_topk, recall_item_num, item_topk_click)
+```
+
+> 定义了一个名为 `item_based_recommend` 的函数，其目的是基于物品协同过滤算法为特定用户进行文章召回
+
+- 该函数接受六个参数：`user_id`（用户ID）、`user_item_time_dict`（用户点击文章序列的字典）、`i2i_sim`（文章相似性矩阵）、`sim_item_topk`（选择与当前文章最相似的前k篇文章）、`recall_item_num`（最后的召回文章数量）、`item_topk_click`（点击次数最多的文章列表）。
+
+```Python
+def item_based_recommend(user_id, user_item_time_dict, i2i_sim, sim_item_topk, recall_item_num, item_topk_click):"""
+        基于文章协同过滤的召回
+        :param user_id: 用户id
+        :param user_item_time_dict: 字典, 根据点击时间获取用户的点击文章序列   {user1: [(item1, time1), (item2, time2)..]...}
+        :param i2i_sim: 字典，文章相似性矩阵
+        :param sim_item_topk: 整数， 选择与当前文章最相似的前k篇文章
+        :param recall_item_num: 整数， 最后的召回文章数量
+        :param item_topk_click: 列表，点击次数最多的文章列表，用户召回补全
+
+        return: 召回的文章列表 {item1:score1, item2: score2...}
+        注意: 基于物品的协同过滤(详细请参考上一期推荐系统基础的组队学习)， 在多路召回部分会加上关联规则的召回策略
+    """
+```
+
+- 从 `user_item_time_dict` 中获取指定 `user_id` 的用户历史点击文章序列，存储在 `user_hist_items` 中。
+- 使用列表解析和集合推导式创建一个集合 `user_hist_items_`，包含用户历史点击的所有文章ID。
+
+```Python
+# 获取用户历史交互的文章
+user_hist_items = user_item_time_dict[user_id]
+user_hist_items_ = {item_id for item_id, _ in user_hist_items}
+# user_hist_items_ 
+{299841, 299170, 198659, 284547, 284901, 298599, 240233, 235230, 272143, 156560, 286128, 297906, 300470, 162809, 129434, 199198}
+```
+
+- 初始化一个空字典 `item_rank`，用于存储召回文章及其得分。
+- 遍历用户历史点击的文章序列 `user_hist_items`，对于每篇文章 `i`，获取其在文章相似性矩阵 `i2i_sim` 中的相似文章列表，并按照相似度 `wij` 降序排序。
+- 选择与当前文章 `i` 最相似的前 `sim_item_topk` 篇文章，对于每篇相似文章 `j`，如果它不在用户历史点击的文章集合 `user_hist_items_` 中，则将其添加到 `item_rank` 中，并累加其相似度得分 `wij`。
+
+```Python
+# 计算召回文章的得分
+item_rank = {}
+for loc, (i, click_time) in enumerate(user_hist_items):
+    for j, wij in sorted(i2i_sim[i].items(), key=lambda x: x[1], reverse=True)[:sim_item_topk]:
+        if j in user_hist_items_:
+            continue
+                
+        item_rank.setdefault(j, 0)
+        item_rank[j] +=  wij
+# item_rank
+{273395: 0.26111287778149245, 276946: 0.26111287778149245, 58606: 0.26111287778149245, 114402: 0.26111287778149245, 235870: 0.26111287778149245, 234698: 0.26111287778149245, 95716: 0.26111287778149245, 59400: 0.26111287778149245, 336220: 0.26111287778149245}
+```
+
+- 可以看到上述推荐结果只有9个`item`，假如每个人要求至少推荐10个`item`那么就需要从“候补池”里边至少再抽取1个`item`；而这个“候选池”就来自于前边通过函数`get_item_topk_click`得到的高点击结果。
+
+- 如果召回的文章数量不足 `recall_item_num`，则使用点击次数最多的文章列表 `item_topk_click` 进行补全。
+- 遍历 `item_topk_click`，对于每个热门文章 `item`，如果它不在 `item_rank` 中，则将其添加到 `item_rank` 中，并赋予一个负数得分（例如 `-i - 100`），以确保其在后续排序中排在最后。
+- 当召回文章数量达到 `recall_item_num` 时，停止补全。
+
+```Python
+if len(item_rank) < recall_item_num:
+    for i, item in enumerate(item_topk_click):
+        if item in item_rank.items(): # 填充的item应该不在原来的列表中
+            continue
+        item_rank[item] = - i - 100 # 随便给个负数就行
+        if len(item_rank) == recall_item_num:
+            break
+```
+
+
+
+### Submit
+
+- `recall_df = recall_df.sort_values(by=['user_id', 'pred_score'])`：按照 `user_id` 和 `pred_score` 对 `recall_df` 进行排序，确保每个用户的推荐文章按照预测分数降序排列。
+- `recall_df['rank'] = recall_df.groupby(['user_id'])['pred_score'].rank(ascending=False, method='first')`：为每个用户的推荐文章分配排名，排名是根据 `pred_score` 降序计算的，`method='first'` 表示在遇到相同分数时，按照出现的顺序分配排名。
+
+```Python
+recall_df = recall_df.sort_values(by=['user_id', 'pred_score'])
+recall_df['rank'] = recall_df.groupby(['user_id'])['pred_score'].rank(ascending=False, method='first')
+```
+
+- 这里检查每个用户是否有至少 `topk` 个item；
+- 注意前边其实预留了余量，举例说明，每个`user`都确保召回了10篇笔记，这里只取`topk=5`
+
+```Python
+tmp = recall_df.groupby('user_id').apply(lambda x: x['rank'].max())
+assert tmp.min() >= topk
+```
+
+- `del recall_df['pred_score']`：删除 `recall_df` 中的 `pred_score` 列，因为后续不再需要预测分数。
+- `recall_df[recall_df['rank'] <= topk]`：筛选出排名在 `topk` 以内的推荐文章。
+- `.set_index(['user_id', 'rank'])`：将 `user_id` 和 `rank` 设置为索引。
+- `.unstack(-1)`：将 `rank` 索引转换为列，形成宽格式的 DataFrame。
+- `.reset_index()`：重置索引，将 `user_id` 和 `rank` 转换回普通列。
+
+```Python
+del recall_df['pred_score']
+submit = recall_df[recall_df['rank'] <= topk].set_index(['user_id', 'rank']).unstack(-1).reset_index()
+```
+
+- `submit.columns = [int(col) if isinstance(col, int) else col for col in submit.columns.droplevel(0)]`：对列名进行处理，将整数类型的列名转换为整数，其他列名保持不变。
+- `submit = submit.rename(columns={'': 'user_id', 1: 'article_1', 2: 'article_2', 3: 'article_3', 4: 'article_4', 5: 'article_5'})`：重命名列，使其符合提交文件的格式要求。
+
+```Python
+submit.columns = [int(col) if isinstance(col, int) else col for col in submit.columns.droplevel(0)]
+submit = submit.rename(columns={'': 'user_id', 1: 'article_1', 2: 'article_2', 
+                                3: 'article_3', 4: 'article_4', 5: 'article_5'})
+```
+
+- 最终得到的`submit`数据如下：
+
+```Python
+   user_id  article_1  article_2  article_3  article_4  article_5
+0   208971     273395     276946      58606     114402     235870
+1   224117     272143     156560      42693     300470     284901
+```
+
+
+
+
+
+## 提交submit
+
+- 完整运行完之后，在`save_path`的路径下可以看到有结果文件生成，这里会结合当天日期对其进行命名，例如`itemcf_baseline_01-13.csv`。
+
+![](./pic/task1_itemcf_submit.png)
+
+- 前往新闻推荐[比赛官网](https://tianchi.aliyun.com/competition/entrance/531842/submission/737)，上传上图提到的`itemcf_baseline_01-13.csv`结果进行提交；
+
+![](./pic/task1_tianchi_submit.png)
+
+- 稍后可以在`我的成绩`查看成绩
+
+![](./pic/task1_tianchi_result.png)
+
+
+
+- 到这里`Task2.跑通Baseline`就完成啦。
